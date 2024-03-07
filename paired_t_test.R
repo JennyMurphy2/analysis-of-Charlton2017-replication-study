@@ -1,0 +1,127 @@
+# Load packages 
+library(stats)
+library(rstatix)
+library(TOSTER)
+library(MOTE)
+library(tidyverse)
+library(janitor)
+
+# Load data
+
+data <- read_csv("rep_data.csv") %>%
+  clean_names()
+
+# Prepare data ----------------
+
+trunk_data <- data %>%
+  select(id, trunk_angle_bottom_nw,  trunk_angle_bottom_hl) %>%
+  mutate(difference = trunk_angle_bottom_nw - trunk_angle_bottom_hl) 
+
+paired_data <- trunk_data %>% 
+  select(-c("difference")) %>%
+  pivot_longer(cols = c("trunk_angle_bottom_nw", "trunk_angle_bottom_hl"),
+               names_to = "condition",
+               values_to = "value") 
+
+## Calculate descriptives for data -------------------------------------
+
+# Replication descriptives
+
+summary_rep <- paired_data %>%
+  group_by(condition) %>%
+  summarise(count = n(),
+            mean = mean(value),
+            sd = sd(value)) %>%
+  mutate(mean_diff = mean(trunk_data$difference), 
+         sd_diff = sd(trunk_data$difference)
+  )
+summary_rep
+
+## Resolving assumptions  ------------------------------------
+### Checking distribution ---------------------------------------
+
+ggplot(paired_data, aes(value)) +
+  geom_histogram(color="black", fill="white", 
+                 bins = 10) +
+  facet_wrap(~ condition,
+          labeller = label_both)
+
+ggplot(paired_data, aes(condition, value, color = condition)) +
+  geom_boxplot(show.legend = FALSE) +
+  theme_minimal()
+
+  ggplot(paired_data, aes(condition, value, color = condition)) +  
+  geom_violin(fill = "light gray") +
+  geom_boxplot(width = .07,
+               fill = "white") +
+  geom_jitter(position = position_jitter(0.21)) +
+  stat_summary(fun = mean,
+               geom = "point",
+               shape = 12,
+               color = "black",
+               size = 5) +
+  theme_bw()
+
+### Checking for outliers on difference score -----------------------------------
+
+trunk_data %>%
+  identify_outliers(difference)
+
+### Checking normality ----------------------------------------------------------
+  trunk_data %>% shapiro_test(difference) 
+
+# T test ---------------------------------------------------
+
+results <- t.test(value ~ condition, paired_data, 
+                  alternative = "two.sided", paired = TRUE, conf.level = 0.95) %>%
+  tidy()
+results
+
+# Analyse the replication ------
+
+## Calculate Original ES --------
+
+#Original descriptives
+
+orig_values <- data.frame(
+ori_pval = 0.00099,
+N = 14,
+m1 = 42.80,
+sd1 = 6.46,
+m2 = 37.03,
+sd2 = 6.38,
+mean_diff = 5.77
+)
+
+# Estimating the t-value
+
+quantile = 1 - orig_values$ori_pval/2 # for two-tailed
+
+ori_tval <- qt(quantile, df = 13, lower.tail = FALSE)
+
+ori_tval <- abs(ori_tval)
+ori_tval
+
+# Calculating effect size
+
+ori_dz <- d.dep.t.diff.t(t = ori_tval, n = 14, a = 0.05)
+ori_dz
+
+## Calculate replication ES ------
+
+rep_dz <- d.dep.t.diff(mdiff = summary_rep$mean_diff[1], sddiff = summary_rep$sd_diff[1], 
+                       n = summary_rep$count[1], a = 0.05)
+rep_dz
+
+## Z-test  --------
+
+rep_test <- compare_smd(
+  smd1 = ori_dz$d,
+  n1 = orig_values$N,
+  smd2 = rep_dz$d,
+  n2 = summary_rep$count[1],
+  paired = TRUE,
+  alternative = "greater")
+rep_test
+
+
