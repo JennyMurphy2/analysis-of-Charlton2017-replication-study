@@ -44,13 +44,13 @@ ggplot(paired_data, aes(value)) +
   geom_histogram(color="black", fill="white", 
                  bins = 10) +
   facet_wrap(~ condition,
-          labeller = label_both)
+             labeller = label_both)
 
 ggplot(paired_data, aes(condition, value, color = condition)) +
   geom_boxplot(show.legend = FALSE) +
   theme_minimal()
 
-  ggplot(paired_data, aes(condition, value, color = condition)) +  
+ggplot(paired_data, aes(condition, value, color = condition)) +  
   geom_violin(fill = "light gray") +
   geom_boxplot(width = .07,
                fill = "white") +
@@ -68,9 +68,15 @@ trunk_data %>%
   identify_outliers(difference)
 
 ### Checking normality ----------------------------------------------------------
-  trunk_data %>% shapiro_test(difference) 
+trunk_data %>% shapiro_test(difference) 
 
 # T test ---------------------------------------------------
+
+paired_data$condition <- as.factor(paired_data$condition)
+
+# R compares conditions alphabetically, I am reordering here to match the original study
+
+paired_data$condition <- forcats::fct_relevel(paired_data$condition, "trunk_angle_bottom_nw", "trunk_angle_bottom_hl")
 
 results <- t.test(value ~ condition, paired_data, 
                   alternative = "two.sided", paired = TRUE, conf.level = 0.95) %>%
@@ -84,23 +90,19 @@ results
 #Original descriptives
 
 orig_values <- data.frame(
-ori_pval = 0.00099,
-N = 14,
-m1 = 42.80,
-sd1 = 6.46,
-m2 = 37.03,
-sd2 = 6.38,
-mean_diff = 5.77
+  ori_pval = 0.00099,
+  N = 14,
+  hl_mean = 37.03,
+  hl_sd = 6.38,
+  nw_mean = 42.80,
+  nw_sd = 6.46
 )
 
 # Estimating the t-value
 
 quantile = 1 - orig_values$ori_pval/2 # for two-tailed
 
-ori_tval <- qt(quantile, df = 13, lower.tail = FALSE)
-
-ori_tval <- abs(ori_tval)
-ori_tval
+ori_tval <- qt(quantile, df = 13)
 
 # Calculating effect size
 
