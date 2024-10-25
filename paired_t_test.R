@@ -80,9 +80,12 @@ paired_data$condition <- as.factor(paired_data$condition)
 
 paired_data$condition <- forcats::fct_relevel(paired_data$condition, "trunk_angle_bottom_nw", "trunk_angle_bottom_hl")
 
-results <- t.test(value ~ condition, paired_data, 
-                  alternative = "two.sided", paired = TRUE, conf.level = 0.95) %>%
-  tidy()
+#results <- t.test(value ~ condition, paired_data, 
+#                  alternative = "two.sided", paired = TRUE, conf.level = 0.95) %>%
+#  tidy()
+#results
+
+results <- t.test(trunk_data$trunk_angle_bottom_nw, trunk_data$trunk_angle_bottom_hl, paired = TRUE)
 results
 
 # Analyse the replication ------
